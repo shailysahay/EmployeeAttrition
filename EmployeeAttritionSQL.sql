@@ -123,7 +123,7 @@ WITH SatisfactionRangeTable as
     FROM EmployeeAttrition
 )
 
-SELECT cOUNT(*), SatisfactionRange, turnover
+SELECT COUNT(*), SatisfactionRange, turnover
 FROM SatisfactionRangeTable
 GROUP BY SatisfactionRange, turnover
 ORDER BY SatisfactionRange, turnover
