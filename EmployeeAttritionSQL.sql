@@ -7,7 +7,38 @@ SQL Queries used for Tableau
 
 
 -- 1)
--- ########### Employee Attrition Percentage ############
+
+-- ###########  Create 'Satisfaction_Range' groups - 'high', 'medium', 'low' - based on 'satisfaction_level' column  ##########
+-- ###########  Add 'Satisfaction_Range' column to the original 'EmployeeAttrition' table   ###########
+
+ALTER TABLE EmployeeAttrition
+Add Satisfaction_Range Varchar(10)
+/
+
+UPDATE EmployeeAttrition
+SET Satisfaction_Range = (
+                            WITH SatisfactionRangeTable as
+                            (   
+                                SELECT EMPLOYEEID,
+                                    CASE 
+                                        WHEN SATISFACTION_LEVEL >= 0.0 AND SATISFACTION_LEVEL <= 0.3 THEN 'low'
+                                        WHEN SATISFACTION_LEVEL > 0.3 AND SATISFACTION_LEVEL <= 0.6 THEN 'medium'
+                                        WHEN SATISFACTION_LEVEL > 0.6 AND SATISFACTION_LEVEL <= 1.0 THEN 'high'
+                                        ELSE 'NA'
+                                    END AS Satisfaction_Range
+                                FROM EmployeeAttrition
+                            )
+                            
+                            SELECT Satisfaction_Range 
+                            FROM SatisfactionRangeTable
+                            WHERE EmployeeAttrition.EMPLOYEEID = SatisfactionRangeTable.EMPLOYEEID
+                        );
+/
+
+
+
+-- 2)
+-- ########### Calculate Employee Attrition Percentage ############
 
 SELECT 
     COUNT(*) AS Total_Employees, 
@@ -21,12 +52,11 @@ FROM EmployeeAttrition e2
 
 
 
--- 2)
--- ########### Attrition Rate of employees based on Salary range and turnover ###########
+-- 3)
+-- ########### Calculate Attrition Rate of employees based on Salary range and turnover ###########
 
 
--- Using JOIN and Subquery --
-
+-- Using JOIN and Subquery
     SELECT TotalEmp.SALARY_RANGE,  ROUND((TurnoverEmpCount/TotalEmpCount)* 100,2) AS Attrition_Rate
     FROM
         (SELECT SALARY_RANGE, count(turnover) as TotalEmpCount
@@ -41,8 +71,8 @@ FROM EmployeeAttrition e2
     
 /
 
--- Using Partition By --
 
+-- Using Partition By
 SELECT  DISTINCT SALARY_RANGE, turnover, Attrition_Rate
 FROM
     (SELECT SALARY_RANGE, turnover,
@@ -55,8 +85,7 @@ WHERE turnover = 1
 /
 
 
--- Using CTE and Partition By --
-
+-- Using CTE and Partition By
 WITH t1 AS 
  (SELECT turnover, SALARY_RANGE, Count(*) AS Turnover_Count 
   FROM EmployeeAttrition
@@ -68,41 +97,26 @@ ORDER BY turnover, SALARY_RANGE;
 /
 
 
--- 3)
--- ########### Attrition rate of employees based on Satisfaction range and turnover ###########
 
 
--- Creating 'Satisfaction Range' groups - 'high', 'medium', 'low'
-
-WITH SatisfactionRangeTable as
-(   
-    SELECT EmployeeID,turnover,
-        CASE 
-            WHEN SATISFACTION_LEVEL >= 0.0 AND SATISFACTION_LEVEL <= 0.3 THEN 'low'
-            WHEN SATISFACTION_LEVEL > 0.3 AND SATISFACTION_LEVEL <= 0.6 THEN 'medium'
-            WHEN SATISFACTION_LEVEL > 0.6 AND SATISFACTION_LEVEL <= 1.0 THEN 'high'
-            ELSE 'NA'
-        END AS SatisfactionRange
-    FROM EmployeeAttrition
-)
+-- 4)
+-- ########### Calculate Attrition rate of employees based on Satisfaction range and turnover ###########
 
 
 -- Calculating attrition rate for each group
-
-SELECT DISTINCT turnover, SatisfactionRange, 
-    ROUND((Count(*) OVER (PARTITION BY SatisfactionRange, turnover)/ 
-    (Count(*) OVER (PARTITION BY SatisfactionRange)))* 100,2) 
+SELECT DISTINCT turnover, Satisfaction_Range, 
+    ROUND((Count(*) OVER (PARTITION BY Satisfaction_Range, turnover)/ 
+    (Count(*) OVER (PARTITION BY Satisfaction_Range)))* 100,2) 
     AS PercentEmployees
-FROM SatisfactionRangeTable
-ORDER BY turnover, SatisfactionRange
-
+FROM EmployeeAttrition
+ORDER BY turnover, Satisfaction_Range
 /
 
 
 
 
--- 4)      
--- ########### Attrition Rate of employees based on Time spent in company and turnover ###########
+-- 5)      
+-- ########### Calculate Attrition Rate of employees based on Time spent in company and turnover ###########
 
 SELECT TotalEmp.TIME_SPEND_COMPANY,  ROUND((TurnoverEmpCount/TotalEmpCount)* 100,2) AS Attrition_Rate
 FROM
@@ -118,24 +132,4 @@ ON  TotalEmp.TIME_SPEND_COMPANY = TurnoverEmp.TIME_SPEND_COMPANY
 /    
 
 
-
-
--- 5)
--- ########### Add 'Satisfaction range' column to the original table ###########
-
-WITH SatisfactionRangeTable as
-(   
-    SELECT EMPLOYEEID, LAST_EVALUATION, NUMBER_OF_PROJECTS, AVG_MONTHLY_HOURS, 
-    TIME_SPEND_COMPANY, WORK_ACCIDENT, TURNOVER, PROMOTION_5YEARS, DEPARTMENT, SALARY_RANGE,
-        CASE 
-            WHEN SATISFACTION_LEVEL >= 0.0 AND SATISFACTION_LEVEL <= 0.3 THEN 'low'
-            WHEN SATISFACTION_LEVEL > 0.3 AND SATISFACTION_LEVEL <= 0.6 THEN 'medium'
-            WHEN SATISFACTION_LEVEL > 0.6 AND SATISFACTION_LEVEL <= 1.0 THEN 'high'
-            ELSE 'NA'
-        END AS SatisfactionRange
-    FROM EmployeeAttrition
-)
-
-SELECT * FROM SatisfactionRangeTable
-/
 
