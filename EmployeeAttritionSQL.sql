@@ -1,6 +1,6 @@
 /*
 
-SQL Queries used for Tableau
+SQL Queries used for data cleaning and Tableau
 
 */
 
