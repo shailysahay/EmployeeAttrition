@@ -6,6 +6,10 @@ SQL Queries used for data cleaning and Tableau
 
 
 
+
+
+
+
 -- 1)
 
 -- ###########  Create 'Satisfaction_Range' groups - 'high', 'medium', 'low' - based on 'satisfaction_level' column  ##########
@@ -55,8 +59,8 @@ FROM EmployeeAttrition e2
 -- 3)
 -- ########### Calculate Attrition Rate of employees based on Salary range and turnover ###########
 
-
 -- Using JOIN and Subquery
+
     SELECT TotalEmp.SALARY_RANGE,  ROUND((TurnoverEmpCount/TotalEmpCount)* 100,2) AS Attrition_Rate
     FROM
         (SELECT SALARY_RANGE, count(turnover) as TotalEmpCount
@@ -71,7 +75,6 @@ FROM EmployeeAttrition e2
     
 /
 
-
 -- Using Partition By
 SELECT  DISTINCT SALARY_RANGE, turnover, Attrition_Rate
 FROM
@@ -84,8 +87,8 @@ WHERE turnover = 1
 
 /
 
-
 -- Using CTE and Partition By
+
 WITH t1 AS 
  (SELECT turnover, SALARY_RANGE, Count(*) AS Turnover_Count 
   FROM EmployeeAttrition
@@ -130,6 +133,30 @@ JOIN
     GROUP BY TIME_SPEND_COMPANY) TurnoverEmp
 ON  TotalEmp.TIME_SPEND_COMPANY = TurnoverEmp.TIME_SPEND_COMPANY
 /    
+
+
+
+-- 6)      
+-- ########### Calculate Attrition Rate of employees based on Average Monthly hours and turnover ###########
+
+WITH AverageHoursRangeTable as
+(   
+    SELECT EmployeeID,turnover,
+        CASE 
+            WHEN AVG_MONTHLY_HOURS < (SELECT AVG(AVG_MONTHLY_HOURS) FROM EmployeeAttrition) THEN 'Below Average Hours'
+            ELSE 'Above Average Hours'
+        END AS AvgMonthlyHoursRange
+    FROM EmployeeAttrition
+)
+
+SELECT DISTINCT AvgMonthlyHoursRange, turnover,
+    ROUND((Count(*) OVER (PARTITION BY AvgMonthlyHoursRange, turnover)/ 
+    (Count(*) OVER (PARTITION BY AvgMonthlyHoursRange)))* 100,2) 
+    AS HoursAttritionPct
+FROM AverageHoursRangeTable
+ORDER BY turnover, AvgMonthlyHoursRange
+
+/
 
 
 
